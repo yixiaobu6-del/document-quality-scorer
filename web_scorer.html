@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内部文档质量评分 - 团队版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <nav class="bg-cyan-700 text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-2">
+            <h1 class="text-xl font-bold"><i class="fa fa-file-text mr-2"></i>内部文档质量评分 - 团队版</h1>
+            <div class="flex flex-wrap gap-2 text-sm">
+                <button onclick="showTab('scorer')" class="tab-btn px-3 py-1 rounded bg-cyan-500"><i class="fa fa-edit"></i> 评分</button>
+                <button onclick="showTab('history')" class="tab-btn px-3 py-1 rounded hover:bg-cyan-500"><i class="fa fa-history"></i> 历史趋势</button>
+                <button onclick="showTab('team')" class="tab-btn px-3 py-1 rounded hover:bg-cyan-500"><i class="fa fa-users"></i> 团队评分</button>
+                <button onclick="showTab('report')" class="tab-btn px-3 py-1 rounded hover:bg-cyan-500"><i class="fa fa-file-text"></i> 评分报告</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto p-4">
+        <!-- ====== 评分 Tab ====== -->
+        <div id="tab-scorer" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h3 class="font-bold mb-4"><i class="fa fa-paste mr-2 text-cyan-600"></i>文档评分</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div><label class="block text-sm text-gray-600 mb-1">文档标题</label>
+                                <input type="text" id="docTitle" class="w-full border rounded p-2" placeholder="如：XX产品PRD v2.0"></div>
+                            <div><label class="block text-sm text-gray-600 mb-1">文档类型</label>
+                                <div class="flex flex-wrap gap-2" id="docTypeSelect">
+                                    <button onclick="selectDocType('技术文档')" class="type-btn px-4 py-2 rounded text-sm font-medium bg-cyan-600 text-white">技术文档</button>
+                                    <button onclick="selectDocType('产品PRD')" class="type-btn px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-600 hover:bg-cyan-100">产品PRD</button>
+                                    <button onclick="selectDocType('运营方案')" class="type-btn px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-600 hover:bg-cyan-100">运营方案</button>
+                                    <button onclick="selectDocType('设计稿')" class="type-btn px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-600 hover:bg-cyan-100">设计稿</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-600 mb-1">粘贴文档内容</label>
+                            <textarea id="docContent" rows="6" class="w-full border rounded p-2 text-sm font-mono" placeholder="在此粘贴要评分的文档内容..."></textarea>
+                        </div>
+
+                        <h4 class="font-bold text-sm mb-3"><i class="fa fa-sliders mr-1 text-cyan-600"></i>各维度评分（拖动滑块）</h4>
+                        <div id="dimensionSliders" class="space-y-3"></div>
+
+                        <!-- AI自动初评按钮 -->
+                        <div class="mt-3 flex flex-wrap gap-2">
+                          <button onclick="autoEvaluate()" class="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 text-sm"><i class="fa fa-magic mr-1"></i> AI自动初评</button>
+                          <button onclick="submitScore()" class="bg-cyan-600 text-white py-2 px-4 rounded-lg hover:bg-cyan-700 text-sm"><i class="fa fa-calculator mr-2"></i> 提交评分（含团队模拟）</button>
+                        </div>
+                        <div id="aiEvalResult" class="mt-3 text-sm hidden"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-white rounded-xl shadow p-5">
+                        <h4 class="font-bold mb-3"><i class="fa fa-star mr-1 text-cyan-600"></i>评分结果</h4>
+                        <div id="scoreResult" class="text-center">
+                            <div class="text-gray-400 text-sm py-4">填写内容提交后显示</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-5">
+                        <h4 class="font-bold text-sm mb-3"><i class="fa fa-database mr-1 text-cyan-600"></i>快速填充</h4>
+                        <div class="space-y-2 text-sm">
+                            <button onclick="fillDemo('tech')" class="w-full text-left p-2 bg-gray-50 rounded hover:bg-cyan-50">技术文档示例</button>
+                            <button onclick="fillDemo('prd')" class="w-full text-left p-2 bg-gray-50 rounded hover:bg-cyan-50">产品PRD示例</button>
+                            <button onclick="fillDemo('op')" class="w-full text-left p-2 bg-gray-50 rounded hover:bg-cyan-50">运营方案示例</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 团队评分面板 -->
+            <div id="teamScorePanel" class="hidden mt-6">
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h3 class="font-bold mb-4"><i class="fa fa-users text-cyan-600"></i> 团队评分对比</h3>
+                    <div id="teamScoreGrid" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4"></div>
+                    <canvas id="teamChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 历史趋势 Tab ====== -->
+        <div id="tab-history" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold"><i class="fa fa-list mr-2 text-cyan-600"></i>评分历史</h3>
+                        <button onclick="clearHistory()" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"><i class="fa fa-trash mr-1"></i>清空</button>
+                    </div>
+                    <div id="historyList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h3 class="font-bold mb-4"><i class="fa fa-line-chart mr-2 text-cyan-600"></i>评分趋势（最近10次）</h3>
+                    <canvas id="trendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 团队评分 Tab ====== -->
+        <div id="tab-team" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow p-6">
+                <h3 class="font-bold mb-4"><i class="fa fa-users mr-2 text-cyan-600"></i>团队评分总览</h3>
+                <div id="teamOverview" class="text-gray-600 text-sm space-y-4">
+                    <p>系统模拟了3位虚拟评分者（张三、李四、王五）的评分数据。</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="teamAvgCards"></div>
+                <canvas id="teamAvgChart" height="250"></canvas>
+                <div class="mt-6">
+                    <h4 class="font-bold mb-3"><i class="fa fa-star-half-o text-cyan-600"></i>团队评分明细</h4>
+                    <div id="teamDetailList" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 报告 Tab ====== -->
+        <div id="tab-report" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold"><i class="fa fa-file-text mr-2 text-cyan-600"></i>评分报告</h3>
+                    <button onclick="exportScoreReport()" class="bg-cyan-600 text-white px-4 py-2 rounded text-sm hover:bg-cyan-700"><i class="fa fa-download mr-1"></i>导出报告</button>
+                </div>
+                <button onclick="generateScoreReport()" class="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 mb-4"><i class="fa fa-file-text-o mr-1"></i>基于最新评分生成报告</button>
+                <pre id="reportPreview" class="bg-gray-900 text-green-400 p-4 rounded text-sm overflow-x-auto whitespace-pre-wrap min-h-[250px]">提交评分后生成报告</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============== 常量 ==============
+        const DIMS = [
+            { id: 'clarity', name: '清晰度', desc: '表达是否清晰、无歧义', icon: 'fa-eye' },
+            { id: 'completeness', name: '完整性', desc: '内容是否全面、无遗漏', icon: 'fa-list' },
+            { id: 'timeliness', name: '时效性', desc: '信息是否最新、不过时', icon: 'fa-clock-o' },
+            { id: 'actionability', name: '可操作性', desc: '是否具备可执行指导', icon: 'fa-cogs' },
+            { id: 'format', name: '格式规范', desc: '排版格式是否规范一致', icon: 'fa-file-code-o' }
+        ];
+
+        const TYPE_WEIGHTS = {
+            '技术文档': { clarity: 0.3, completeness: 0.2, timeliness: 0.15, actionability: 0.2, format: 0.15 },
+            '产品PRD': { clarity: 0.2, completeness: 0.25, timeliness: 0.15, actionability: 0.25, format: 0.15 },
+            '运营方案': { clarity: 0.15, completeness: 0.2, timeliness: 0.2, actionability: 0.3, format: 0.15 },
+            '设计稿': { clarity: 0.2, completeness: 0.2, timeliness: 0.1, actionability: 0.25, format: 0.25 }
+        };
+
+        // 行业标准参考
+        const INDUSTRY_STD = { clarity: 6.5, completeness: 6.0, timeliness: 5.5, actionability: 6.0, format: 6.5 };
+
+        const TEAM_MEMBERS = [
+            { name: '张三', style: '严格' },
+            { name: '李四', style: '均衡' },
+            { name: '王五', style: '宽松' }
+        ];
+
+        // ============== 状态 ==============
+        let docType = '技术文档';
+        let scores = {};
+        let history = JSON.parse(localStorage.getItem('docScores_v2') || '[]');
+        let trendChartInstance = null;
+        let teamChartInstance = null;
+        let teamAvgChartInstance = null;
+
+        // ============== 本地存储 ==============
+        function save() { localStorage.setItem('docScores_v2', JSON.stringify(history)); }
+
+        // ============== Tab切换 ==============
+        function showTab(name) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.className = 'tab-btn px-3 py-1 rounded hover:bg-cyan-500';
+            });
+            document.querySelector(`.tab-btn[onclick*="'${name}'"]`).className = 'tab-btn px-3 py-1 rounded bg-cyan-500';
+            document.getElementById('tab-' + name).classList.remove('hidden');
+            if (name === 'history') renderHistory();
+            if (name === 'team') renderTeamPage();
+        }
+
+        // ============== 文档类型选择 ==============
+        function selectDocType(type) {
+            docType = type;
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                btn.className = `type-btn px-4 py-2 rounded text-sm font-medium ${btn.textContent === type ? 'bg-cyan-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-cyan-100'}`;
+            });
+            renderSliders();
+        }
+
+        // ============== 滑动条渲染 ==============
+        function renderSliders() {
+            const container = document.getElementById('dimensionSliders');
+            container.innerHTML = DIMS.map(d => {
+                const val = scores[d.id] || 5;
+                return `<div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-medium"><i class="fa ${d.icon} mr-1 text-cyan-600"></i>${d.name}</label>
+                        <span class="text-sm font-bold text-cyan-600" id="val_${d.id}">${val}</span>
+                    </div>
+                    <input type="range" min="0" max="10" value="${val}" step="0.5" oninput="updateSlider('${d.id}')" id="slider_${d.id}" class="w-full">
+                    <div class="text-xs text-gray-400">${d.desc}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function updateSlider(id) {
+            const val = parseFloat(document.getElementById(`slider_${id}`).value);
+            scores[id] = val;
+            document.getElementById(`val_${id}`).textContent = val;
+        }
+
+        // ============== 提交评分（含团队模拟） ==============
+        function submitScore() {
+            const title = document.getElementById('docTitle').value.trim() || '未命名文档';
+            const content = document.getElementById('docContent').value.trim();
+            if (!content) { alert('请粘贴文档内容'); return; }
+
+            const weights = TYPE_WEIGHTS[docType];
+            let total = 0;
+            DIMS.forEach(d => {
+                const val = parseFloat(document.getElementById(`slider_${d.id}`).value) || 0;
+                scores[d.id] = val;
+                total += val * (weights[d.id] || 0.2);
+            });
+            total = Math.round(total * 10) / 10;
+
+            // 生成改进建议
+            const suggestions = generateSuggestions(scores, docType);
+
+            // 显示结果
+            showScoreResult(total, scores, docType, suggestions, title, content.length);
+
+            // 保存当前评分记录
+            const record = {
+                id: Date.now(), title, docType, total,
+                scores: { ...scores },
+                date: new Date().toISOString(),
+                charCount: content.length,
+                suggestions
+            };
+            history.push(record);
+            save();
+
+            // ---- 模拟团队评分 ----
+            const teamScores = generateTeamScores(scores);
+            showTeamPanel(title, scores, teamScores);
+        }
+
+        // ============== 显示评分结果 ==============
+        function showScoreResult(total, scores, type, suggestions, title, charCount) {
+            const level = total >= 8 ? '优秀' : total >= 6.5 ? '良好' : total >= 4.5 ? '一般' : '需改进';
+            const levelColor = total >= 8 ? 'text-green-600' : total >= 6.5 ? 'text-blue-600' : total >= 4.5 ? 'text-orange-600' : 'text-red-600';
+            const weights = TYPE_WEIGHTS[type];
+
+            // 低分项检测
+            const lowDims = DIMS.filter(d => (scores[d.id] || 0) < 6).map(d => d.id);
+
+            const resultDiv = document.getElementById('scoreResult');
+            resultDiv.innerHTML = `
+                <div class="text-5xl font-bold ${levelColor} mb-2">${total.toFixed(1)}</div>
+                <div class="text-lg font-medium ${levelColor}">${level}</div>
+                <div class="text-xs text-gray-500 mt-1">${type} | 满分10分 | ${charCount}字</div>
+                <div class="mt-4 space-y-2 text-left">
+                    ${DIMS.map(d => {
+                        const v = scores[d.id] || 0;
+                        const w = weights[d.id] || 0.2;
+                        const barColor = v >= 7 ? 'bg-green-500' : v >= 4 ? 'bg-yellow-500' : 'bg-red-500';
+                        const isLow = v < 6;
+                        return `<div class="flex items-center gap-2 text-sm ${isLow ? 'bg-red-50 -mx-1 px-1 rounded' : ''}">
+                          <span class="w-16 text-gray-600 ${isLow ? 'font-bold text-red-600' : ''}">${d.name}</span>
+                          <div class="flex-1 bg-gray-200 rounded-full h-2"><div class="${barColor} h-2 rounded-full" style="width:${v * 10}%"></div></div>
+                          <span class="w-8 text-right font-medium ${isLow ? 'text-red-600' : ''}">${v}</span>
+                          ${isLow ? '<i class="fa fa-exclamation-triangle text-red-500 text-xs"></i>' : ''}
+                        </div>`;
+                    }).join('')}
+                </div>
+                ${lowDims.length > 0 ? `<div class="mt-4 p-3 bg-yellow-50 rounded-lg text-left">
+                  <h5 class="font-medium text-yellow-700 mb-2"><i class="fa fa-file-text-o mr-1"></i>低分项模板推荐</h5>
+                  <div class="space-y-1">${lowDims.map(dimId => {
+                    const dim = DIMS.find(d => d.id === dimId);
+                    const rec = TEMPLATE_RECOMMENDATIONS[dimId];
+                    return `<div class="flex items-center gap-2 text-sm">
+                      <span class="text-red-600 font-medium">${dim.name}偏低</span>
+                      <span class="text-gray-500">→ 推荐：</span>
+                      <span class="text-blue-600">${rec.low}</span>
+                    </div>`;
+                  }).join('')}</div>
+                  <div class="text-xs text-gray-500 mt-2">建议使用「技术写作者工具箱/template_generator.html」中的对应模板进行改进</div>
+                </div>` : ''}
+                <div class="mt-4 text-left">
+                    <h5 class="font-medium text-sm mb-2"><i class="fa fa-lightbulb-o mr-1 text-cyan-600"></i>改进建议</h5>
+                    <div class="space-y-2">${suggestions.map((s, i) => `<div class="text-xs text-gray-600 p-2 bg-gray-50 rounded">${i + 1}. ${s}</div>`).join('')}</div>
+                </div>
+            `;
+        }
+
+        function showToast(msg) {
+          const el = document.getElementById('toast') || (() => {
+            const t = document.createElement('div');
+            t.id = 'toast';
+            t.className = 'fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium z-50 transition-all duration-300';
+            document.body.appendChild(t); return t;
+          })();
+          el.textContent = msg; el.classList.remove('hidden', 'opacity-0'); el.classList.add('opacity-100');
+          clearTimeout(el._timer);
+          el._timer = setTimeout(() => { el.classList.add('opacity-0'); setTimeout(() => el.classList.add('hidden'), 300); }, 2500);
+        }
+
+        // ============== 团队评分模拟 ==============
+        function generateTeamScores(myScores) {
+            return TEAM_MEMBERS.map(m => {
+                const memberScores = {};
+                DIMS.forEach(d => {
+                    const base = myScores[d.id] || 5;
+                    let offset;
+                    if (m.style === '严格') offset = -(Math.random() * 1.0 + 0.3); // -0.3~-1.3
+                    else if (m.style === '宽松') offset = Math.random() * 1.0 + 0.3; // 0.3~1.3
+                    else offset = (Math.random() - 0.5) * 1.0; // -0.5~0.5
+                    memberScores[d.id] = Math.round(Math.max(0, Math.min(10, base + offset)) * 10) / 10;
+                });
+                // 算总分
+                const weights = TYPE_WEIGHTS[docType];
+                let total = 0;
+                DIMS.forEach(d => { total += memberScores[d.id] * (weights[d.id] || 0.2); });
+                total = Math.round(total * 10) / 10;
+                return { name: m.name, style: m.style, scores: memberScores, total };
+            });
+        }
+
+        function showTeamPanel(title, myScores, teamScores) {
+            const panel = document.getElementById('teamScorePanel');
+            panel.classList.remove('hidden');
+
+            // 团队评分卡
+            const grid = document.getElementById('teamScoreGrid');
+            const myTotal = (() => {
+                const w = TYPE_WEIGHTS[docType];
+                let t = 0;
+                DIMS.forEach(d => { t += (myScores[d.id] || 0) * (w[d.id] || 0.2); });
+                return Math.round(t * 10) / 10;
+            })();
+
+            grid.innerHTML = `
+                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-500">你的评分</div>
+                    <div class="text-2xl font-bold text-cyan-600">${myTotal}</div>
+                </div>
+                ${teamScores.map(t => {
+                    const color = t.total >= 7 ? 'green' : t.total >= 5 ? 'yellow' : 'red';
+                    return `<div class="bg-${color}-50 border border-${color}-200 rounded-lg p-4 text-center">
+                        <div class="text-xs text-gray-500">${t.name} (${t.style})</div>
+                        <div class="text-2xl font-bold text-${color}-600">${t.total}</div>
+                    </div>`;
+                }).join('')}
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-500">团队平均</div>
+                    <div class="text-2xl font-bold text-purple-600">${Math.round((myTotal + teamScores.reduce((a, t) => a + t.total, 0)) / (teamScores.length + 1) * 10) / 10}</div>
+                </div>
+            `;
+
+            // 雷达图对比
+            if (teamChartInstance) teamChartInstance.destroy();
+            const ctx = document.getElementById('teamChart').getContext('2d');
+            teamChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: DIMS.map(d => d.name),
+                    datasets: [
+                        { label: '你', data: DIMS.map(d => myScores[d.id] || 5), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', borderWidth: 2 },
+                        ...teamScores.map((t, i) => ({
+                            label: t.name, data: DIMS.map(d => t.scores[d.id] || 5),
+                            borderColor: ['#f59e0b', '#10b981', '#8b5cf6'][i],
+                            backgroundColor: ['rgba(245,158,11,0.1)', 'rgba(16,185,129,0.1)', 'rgba(139,92,246,0.1)'][i],
+                            borderWidth: 1.5
+                        })),
+                        { label: '行业标准', data: DIMS.map(d => INDUSTRY_STD[d.id]), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.05)', borderWidth: 1.5, borderDash: [5,5] }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10 } } },
+                    scales: { r: { beginAtZero: true, max: 10, ticks: { stepSize: 2 } } }
+                }
+            });
+
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ============== 改进建议 ==============
+        function generateSuggestions(scores, type) {
+            const tips = [];
+            if ((scores.clarity || 0) < 6) tips.push('提升清晰度：使用更简洁的语言，避免长句和行业黑话。考虑加入图表或示意图辅助理解。');
+            else if ((scores.clarity || 0) < 8) tips.push('清晰度良好：可考虑增加术语表或附录，进一步降低理解门槛。');
+            else tips.push('清晰度优秀：建议作为模板参考，保持这一标准。');
+
+            if ((scores.completeness || 0) < 6) tips.push(`补充完整性：检查${type === '产品PRD' ? '用户场景、验收标准、异常流程' : type === '技术文档' ? 'API接口、错误码、配置说明' : type === '运营方案' ? '目标指标、时间节点、预算分配' : '设计规范、交互说明、视觉细节'}是否覆盖。`);
+            else if ((scores.completeness || 0) < 8) tips.push('完整性较好：建议增加边界条件说明和常见问题FAQ部分。');
+            else tips.push('完整性优秀：文档覆盖面很全面。');
+
+            if ((scores.timeliness || 0) < 6) tips.push('更新时效性：检查文档中的日期、版本号、引用链接是否需要更新。建议添加"最后更新日期"标注。');
+            else if ((scores.timeliness || 0) < 8) tips.push('时效性良好：建议建立定期review机制，确保信息持续更新。');
+            else tips.push('时效性优秀：信息时效性管理做得很好。');
+
+            if ((scores.actionability || 0) < 6) tips.push('增强可操作性：补充具体的执行步骤、责任人、时间节点。确保读者看完后知道"下一步做什么"。');
+            else if ((scores.actionability || 0) < 8) tips.push('可操作性较好：建议补充具体案例或模板供参考。');
+            else tips.push('可操作性优秀：执行指导非常清晰。');
+
+            if ((scores.format || 0) < 6) tips.push('规范格式：统一标题层级、字体、配色。使用模板格式，确保目录结构清晰。');
+            else if ((scores.format || 0) < 8) tips.push('格式良好：建议统一代码块、表格、图片的样式规范。');
+            else tips.push('格式规范优秀：排版整洁专业。');
+
+            return tips.slice(0, 5);
+        }
+
+        // ============== 填充示例 ==============
+        function fillDemo(type) {
+            const demos = {
+                tech: { title: 'API接口文档 v2.3', type: '技术文档', content: '## POST /api/v2/auth/login\n\n请求头：Content-Type: application/json\n\n请求体：{"username":"string","password":"string"}\n\n响应：{"code":0,"message":"success","data":{"token":"string"}}', scores: { clarity: 7.5, completeness: 6, timeliness: 8, actionability: 8, format: 7 } },
+                prd: { title: 'XX产品PRD v1.0', type: '产品PRD', content: '# 产品需求文档\n## 背景\n用户反馈操作繁琐。\n## 目标\n将操作步骤从5步减到2步。', scores: { clarity: 7, completeness: 5, timeliness: 7, actionability: 6, format: 6.5 } },
+                op: { title: 'Q3用户增长运营方案', type: '运营方案', content: '# Q3用户增长运营方案\n## 目标\n新增50万用户，月活提升30%\n## 策略\n1.渠道投放 2.裂变活动 3.内容运营', scores: { clarity: 6.5, completeness: 5.5, timeliness: 8.5, actionability: 6, format: 6 } }
+            };
+            const demo = demos[type];
+            document.getElementById('docTitle').value = demo.title;
+            selectDocType(demo.type);
+            document.getElementById('docContent').value = demo.content;
+            scores = { ...demo.scores };
+            renderSliders();
+            DIMS.forEach(d => {
+                const el = document.getElementById(`slider_${d.id}`);
+                if (el) el.value = scores[d.id] || 5;
+            });
+        }
+
+        // ============== AI自动初评 ==============
+        const TEMPLATE_RECOMMENDATIONS = {
+          'clarity': { low: '技术文档模板（清晰度结构）', link: '技术写作者工具箱/template_generator.html' },
+          'completeness': { low: '完整API文档模板', link: '技术写作者工具箱/template_generator.html' },
+          'timeliness': { low: '定期更新提醒清单', link: '内部文档质量评分/web_scorer.html' },
+          'actionability': { low: '操作指南模板', link: '技术写作者工具箱/template_generator.html' },
+          'format': { low: '格式规范检查清单', link: '内部文档质量评分/web_scorer.html' }
+        };
+
+        function autoEvaluate() {
+            const content = document.getElementById('docContent').value.trim();
+            if (!content) { alert('请先粘贴文档内容'); return; }
+
+            // 字数分析
+            const charCount = content.length;
+            const wordCount = content.split(/\s+/).filter(w => w).length;
+            const lineCount = content.split('\n').length;
+
+            // 结构分析（标题层级）
+            const h1Count = (content.match(/^#\s/gm) || []).length;
+            const h2Count = (content.match(/^##\s/gm) || []).length;
+            const h3Count = (content.match(/^###\s/gm) || []).length;
+            const hasStructure = h1Count + h2Count + h3Count > 0;
+            const structureDepth = Math.max(h1Count > 0 ? 1 : 0, h2Count > 0 ? 2 : 0, h3Count > 0 ? 3 : 0);
+
+            // 术语密度（检测专业术语）
+            const techTerms = ['API','接口','请求','响应','用户','数据','配置','模块','功能','系统','服务','组件','参数','字段','版本'];
+            const termMatches = techTerms.filter(t => content.toLowerCase().includes(t.toLowerCase())).length;
+
+            // 代码块检测
+            const codeBlocks = (content.match(/```/g) || []).length / 2;
+
+            // 列表检测
+            const bulletLists = (content.match(/^\s*[-*]\s/gm) || []).length;
+            const numberedLists = (content.match(/^\s*\d+\.\s/gm) || []).length;
+
+            // 计算AI初评分数
+            const aiScores = {
+              clarity: Math.min(10, Math.round(hasStructure ? 6 + (structureDepth * 0.5) + (bulletLists > 5 ? 1 : 0) : 4 + Math.min(charCount / 1000, 2))),
+              completeness: Math.min(10, Math.round((charCount > 500 ? 5 : 3) + (h2Count > 3 ? 1.5 : 0) + (termMatches > 5 ? 1 : 0) + (numberedLists > 3 ? 0.5 : 0))),
+              timeliness: docType === '运营方案' ? 7 : docType === '技术文档' ? 6.5 : 6,
+              actionability: Math.min(10, Math.round((bulletLists + numberedLists) * 0.3 + (codeBlocks > 0 ? 2 : 0) + (h3Count > 0 ? 1 : 0) + 4)),
+              format: Math.min(10, Math.round((h1Count > 0 ? 2 : 0) + (h2Count > 0 ? 2 : 0) + (codeBlocks > 0 ? 1.5 : 0) + (bulletLists > 0 || numberedLists > 0 ? 1 : 0) + 3))
+            };
+
+            // 应用分数到滑块
+            DIMS.forEach(d => {
+              const el = document.getElementById(`slider_${d.id}`);
+              if (el) el.value = aiScores[d.id];
+              scores[d.id] = aiScores[d.id];
+              const valEl = document.getElementById(`val_${d.id}`);
+              if (valEl) valEl.textContent = aiScores[d.id];
+            });
+
+            // 显示AI初评结果
+            const avg = Math.round(DIMS.reduce((a, d) => a + aiScores[d.id] * (TYPE_WEIGHTS[docType][d.id] || 0.2), 0) * 10) / 10;
+            const aiDiv = document.getElementById('aiEvalResult');
+            aiDiv.classList.remove('hidden');
+            aiDiv.innerHTML = `
+              <div class="p-3 bg-purple-50 rounded-lg">
+                <div class="font-medium text-purple-700 mb-2"><i class="fa fa-magic"></i> AI初评结果：平均分 ${avg}</div>
+                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>字数：${charCount}字 | 行数：${lineCount}</div>
+                  <div>标题层级：H1=${h1Count} H2=${h2Count} H3=${h3Count}</div>
+                  <div>代码块：${codeBlocks}个 | 列表项：${bulletLists + numberedLists}</div>
+                  <div>术语匹配：${termMatches}个关键术语</div>
+                </div>
+                <div class="mt-2 text-xs text-gray-500">分数已自动填入滑块，可手动调整后提交</div>
+              </div>
+            `;
+            showToast('AI初评完成，平均分 '+avg);
+        }
+
+        // ============== 历史 ==============
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = history.length === 0 ? '<div class="text-center text-gray-400 py-8">暂无评分历史</div>' :
+                history.slice().reverse().slice(0, 30).map(h => {
+                    const color = h.total >= 8 ? 'text-green-600' : h.total >= 6.5 ? 'text-blue-600' : h.total >= 4.5 ? 'text-orange-600' : 'text-red-600';
+                    return `<div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 text-sm">
+                        <div class="flex-1"><div class="font-medium">${h.title}</div>
+                        <div class="text-xs text-gray-500">${h.docType} | ${new Date(h.date).toLocaleDateString('zh-CN')} | ${h.charCount}字</div></div>
+                        <span class="text-xl font-bold ${color}">${h.total}</span>
+                    </div>`;
+                }).join('');
+
+            // 趋势图 - Chart.js折线图
+            if (trendChartInstance) trendChartInstance.destroy();
+            if (history.length >= 2) {
+                const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const recent = sorted.slice(-10);
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                const colors = ['#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
+                trendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: recent.map(h => new Date(h.date).toLocaleDateString('zh-CN')),
+                        datasets: [
+                            { label: '综合评分', data: recent.map(h => h.total), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.3, pointRadius: 4 },
+                            ...DIMS.map((d, i) => ({
+                                label: d.name, data: recent.map(h => h.scores[d.id] || 5),
+                                borderColor: colors[i], borderDash: [3,3], borderWidth: 1, pointRadius: 2, fill: false
+                            }))
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } } },
+                        scales: { y: { min: 0, max: 10, ticks: { stepSize: 2 } } }
+                    }
+                });
+            } else {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                trendChartInstance = new Chart(ctx, { type: 'line', data: { labels: ['无数据'], datasets: [{ label: '暂无', data: [0] }] }, options: { plugins: { legend: { display: false } } } });
+            }
+        }
+
+        function clearHistory() {
+            if (confirm('确定清空所有评分历史？')) {
+                history = [];
+                save();
+                renderHistory();
+            }
+        }
+
+        // ============== 团队页面 ==============
+        function renderTeamPage() {
+            if (history.length === 0) {
+                document.getElementById('teamAvgCards').innerHTML = '<div class="col-span-4 text-center text-gray-400 py-8">暂无评分数据，先在评分Tab提交评分</div>';
+                return;
+            }
+            const allScores = history.map(h => h.scores);
+            const avg = {};
+            DIMS.forEach(d => {
+                avg[d.id] = Math.round((allScores.reduce((a, s) => a + (s[d.id] || 0), 0) / allScores.length) * 10) / 10;
+            });
+            const avgTotal = Math.round(DIMS.reduce((a, d) => a + avg[d.id] * (TYPE_WEIGHTS['技术文档'][d.id] || 0.2), 0) * 10) / 10;
+
+            const last = history[history.length - 1];
+            const lastScores = last ? last.scores : {};
+
+            document.getElementById('teamAvgCards').innerHTML = `
+                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-500">历史平均分</div>
+                    <div class="text-2xl font-bold text-cyan-600">${avgTotal}</div>
+                    <div class="text-xs text-gray-400">共${history.length}次</div>
+                </div>
+                ${DIMS.map(d => `<div class="bg-gray-50 border rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-500">${d.name}</div>
+                    <div class="text-xl font-bold text-cyan-600">${avg[d.id]}</div>
+                    <div class="text-[10px] text-gray-400">你: ${lastScores[d.id] || '-'} | 行业: ${INDUSTRY_STD[d.id]}</div>
+                </div>`).join('')}
+            `;
+
+            if (teamAvgChartInstance) teamAvgChartInstance.destroy();
+            const ctx = document.getElementById('teamAvgChart').getContext('2d');
+            teamAvgChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: DIMS.map(d => d.name),
+                    datasets: [
+                        { label: '历史平均', data: DIMS.map(d => avg[d.id]), borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', borderWidth: 2 },
+                        { label: '最新评分', data: DIMS.map(d => lastScores[d.id] || 5), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', borderWidth: 2 },
+                        { label: '行业标准', data: DIMS.map(d => INDUSTRY_STD[d.id]), borderColor: '#ef4444', borderDash: [5,5], borderWidth: 1.5, backgroundColor: 'rgba(239,68,68,0.05)' }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, scales: { r: { beginAtZero: true, max: 10 } } }
+            });
+
+            // 明细
+            document.getElementById('teamDetailList').innerHTML = history.slice().reverse().slice(0, 20).map(h =>
+                `<div class="flex justify-between p-2 bg-gray-50 rounded text-sm">
+                    <span class="text-gray-600">${h.title} (${new Date(h.date).toLocaleDateString('zh-CN')})</span>
+                    <span class="font-bold text-cyan-600">${h.total}</span>
+                </div>`
+            ).join('');
+        }
+
+        // ============== 报告 ==============
+        function generateScoreReport() {
+            if (history.length === 0) { alert('暂无评分数据'); return; }
+            const last = history[history.length - 1];
+            const myTotal = last.total;
+            const weights = TYPE_WEIGHTS[last.docType];
+            const teamScores = generateTeamScores(last.scores);
+            const teamAvg = Math.round((myTotal + teamScores.reduce((a, t) => a + t.total, 0)) / (teamScores.length + 1) * 10) / 10;
+            const allAvg = Math.round(history.reduce((a, h) => a + h.total, 0) / history.length * 10) / 10;
+
+            const report = `# 文档质量评分报告
+
+## 基本信息
+- **文档标题：** ${last.title}
+- **文档类型：** ${last.docType}
+- **文档字数：** ${last.charCount}
+- **评分日期：** ${new Date(last.date).toLocaleString('zh-CN')}
+
+## 评分结果
+- **你的评分：** ${myTotal} / 10
+- **团队平均分：** ${teamAvg} / 10
+- **历史平均分：** ${allAvg} / 10
+- **行业标准分：** ${Math.round(DIMS.reduce((a, d) => a + INDUSTRY_STD[d.id] * (weights[d.id] || 0.2), 0) * 10) / 10} / 10
+
+## 各维度得分
+
+| 维度 | 你的评分 | 团队平均 | 行业标准 | 对比 |
+|------|---------|---------|---------|------|
+${DIMS.map(d => {
+    const my = last.scores[d.id] || 0;
+    const team = (teamScores.reduce((a, t) => a + t.scores[d.id], 0) / teamScores.length);
+    const ind = INDUSTRY_STD[d.id];
+    const vs = my > ind ? '高于' : my < ind ? '低于' : '持平';
+    return `| ${d.name} | ${my} | ${Math.round(team * 10) / 10} | ${ind} | ${vs}行业标准 |`;
+}).join('\n')}
+
+## 团队评分明细
+
+| 评分者 | 总分 | 风格 |
+|-------|------|------|
+| 你 | ${myTotal} | - |
+${teamScores.map(t => `| ${t.name} | ${t.total} | ${t.style} |`).join('\n')}
+
+## 改进建议
+${last.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+## 评分趋势
+- 历史评分次数：${history.length}
+- 最高分：${Math.round(Math.max(...history.map(h => h.total)) * 10) / 10}
+- 最低分：${Math.round(Math.min(...history.map(h => h.total)) * 10) / 10}
+
+---
+
+*本报告由内部文档质量评分 - 团队版 自动生成*
+*报告日期：${new Date().toLocaleString('zh-CN')}*`;
+
+            document.getElementById('reportPreview').textContent = report;
+        }
+
+        function exportScoreReport() {
+            const text = document.getElementById('reportPreview').textContent;
+            if (!text || text === '提交评分后生成报告') { alert('请先生成报告'); return; }
+            const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `文档评分报告_${new Date().toISOString().slice(0, 10)}.md`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ============== 初始化 ==============
+        renderSliders();
+    </script>
+</body>
+</html>
